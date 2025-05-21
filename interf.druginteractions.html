@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>약물 상호작용 확인</title>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 8px;
+            border-radius: 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            width: 100vw;
+            max-width: 100vw;
+            box-sizing: border-box;
+            margin: 0;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .input-group {
+            margin: 20px 0;
+        }
+        .drug-select-container {
+            position: relative;
+            margin: 5px 0;
+        }
+        .drug-select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: white;
+        }
+        .drug-select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .drug-list {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .drug-list.show {
+            display: block;
+        }
+        .drug-item {
+            padding: 16px;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            position: relative;
+            overflow: hidden;
+        }
+        .drug-item:hover {
+            background-color: #f8fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: rgba(52,152,219,0.2);
+        }
+        .drug-item:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .drug-name {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .drug-detail {
+            font-size: 0.95em;
+            color: #4a5568;
+            line-height: 1.6;
+            margin-top: 6px;
+        }
+        .drug-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #718096;
+        }
+        .drug-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(52,152,219,0.06);
+            padding: 4px 10px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        .drug-meta span:hover {
+            background: rgba(52,152,219,0.12);
+        }
+        .drug-meta i {
+            font-size: 0.95em;
+            color: #3498db;
+        }
+        .drug-type-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin-left: 8px;
+            background: rgba(52,152,219,0.1);
+            color: #3498db;
+            transition: all 0.2s;
+        }
+        .drug-type-badge.generic {
+            background: rgba(46,204,113,0.1);
+            color: #27ae60;
+        }
+        .drug-type-badge:hover {
+            transform: scale(1.05);
+        }
+        @media (prefers-color-scheme: dark) {
+            .drug-item {
+                background: #2c3136;
+                border-color: rgba(255,255,255,0.08);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            }
+            .drug-item:hover {
+                background-color: #363b40;
+                border-color: rgba(79,163,255,0.2);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            }
+            .drug-name {
+                color: #e0e0e0;
+            }
+            .drug-detail {
+                color: #b0b0b0;
+            }
+            .drug-meta {
+                color: #a0a0a0;
+            }
+            .drug-meta span {
+                background: rgba(79,163,255,0.08);
+            }
+            .drug-meta span:hover {
+                background: rgba(79,163,255,0.15);
+            }
+            .drug-meta i {
+                color: #4fa3ff;
+            }
+            .drug-type-badge {
+                background: rgba(79,163,255,0.15);
+                color: #4fa3ff;
+            }
+            .drug-type-badge.generic {
+                background: rgba(46,204,113,0.15);
+                color: #2ecc71;
+            }
+        }
+        @media (max-width: 480px) {
+            .drug-item {
+                padding: 12px;
+                border-radius: 10px;
+                margin-bottom: 8px;
+            }
+            .drug-name {
+                font-size: 1.05em;
+            }
+            .drug-detail {
+                font-size: 0.9em;
+            }
+            .drug-meta {
+                gap: 8px;
+                font-size: 0.85em;
+            }
+            .drug-meta span {
+                padding: 3px 8px;
+            }
+        }
+        .search-input {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+        .search-input:focus {
+            outline: none;
+            border-bottom-color: #3498db;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .warning {
+            background-color: #ffecec;
+            border: 1px solid #ffcdd2;
+            color: #c62828;
+        }
+        .safe {
+            background-color: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            color: #2e7d32;
+        }
+        .drug-info {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 4px solid var(--btn-primary);
+            background-color: var(--bg-color);
+            transition: background-color 0.3s ease;
+        }
+
+        /* 약물 딕셔너리 스타일 */
+        .drug-dictionary {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .dictionary-content {
+            max-height: 300px;
+            overflow-y: hidden;
+            margin-top: 4px;
+            opacity: 0;
+            display: none;
+            transform: translateY(-16px);
+            transition: opacity 0.35s, transform 0.35s;
+        }
+        .dictionary-content.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+            animation: fadeInDown 0.5s cubic-bezier(.4,1.4,.6,1);
+        }
+        .dictionary-content.fade-out {
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.35s, transform 0.35s;
+            animation: fadeOutDown 0.4s cubic-bezier(.4,1.4,.6,1);
+        }
+        @keyframes fadeOutDown {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(16px);
+            }
+        }
+
+        .search-results {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .search-results::before, .search-results::after {
+            content: '';
+            position: absolute;
+            left: 0; right: 0;
+            height: 28px;
+            pointer-events: none;
+            z-index: 2;
+        }
+        .search-results::before {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.20), rgba(255,255,255,0));
+        }
+        .search-results::after {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(255,255,255,0.20), rgba(255,255,255,0));
+        }
+        @media (prefers-color-scheme: dark) {
+            .search-results::before {
+                background: linear-gradient(to bottom, rgba(35,39,42,0.20), rgba(35,39,42,0));
+            }
+            .search-results::after {
+                background: linear-gradient(to top, rgba(35,39,42,0.20), rgba(35,39,42,0));
+            }
+        }
+
+        .drug-item {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            color: #000;
+        }
+
+        .drug-item:hover {
+            background-color: var(--bg-color);
+            color: #000;
+        }
+
+        .recent-searches {
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        #recentSearchesList {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+        .recent-tag {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 2px 8px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .recent-tag:hover {
+            background-color: var(--btn-primary);
+            color: #fff;
+        }
+
+        .drug-detail {
+            font-size: 0.9em;
+            color: var(--muted-color);
+        }
+
+        /* 약물 상세 정보 스타일 추가 */
+        .drug-detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255,255,255,0.35);
+            z-index: 1000;
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+        }
+
+        .drug-detail-content {
+            position: relative;
+            background-color: #fff;
+            margin: 40px auto;
+            padding: 32px;
+            width: 95%;
+            max-width: 680px;
+            max-height: 85vh;
+            overflow-y: auto;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(52,152,219,0.3) transparent;
+        }
+
+        .drug-detail-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .drug-detail-content::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 4px 0;
+        }
+
+        .drug-detail-content::-webkit-scrollbar-thumb {
+            background-color: rgba(52,152,219,0.3);
+            border-radius: 4px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .drug-detail-content::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(52,152,219,0.5);
+        }
+
+        .drug-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 1;
+        }
+
+        .drug-detail-header h3 {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0;
+            padding-right: 16px;
+            line-height: 1.4;
+        }
+
+        .drug-detail-close {
+            background: rgba(0,0,0,0.04);
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #4a5568;
+            line-height: 1;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+        }
+
+        .drug-detail-close:hover {
+            background: rgba(52,152,219,0.1);
+            color: #3498db;
+            transform: rotate(90deg);
+        }
+
+        .drug-detail-section {
+            margin-bottom: 24px;
+            line-height: 1.7;
+            word-break: break-word;
+            font-size: 1.05em;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .drug-detail-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .drug-detail-section h4 {
+            color: #3498db;
+            margin-bottom: 12px;
+            font-size: 1.15em;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .drug-detail-section p {
+            margin: 12px 0;
+            color: #2d3748;
+            line-height: 1.8;
+        }
+
+        .drug-detail-section ul {
+            margin: 12px 0;
+            padding-left: 24px;
+            list-style-type: none;
+        }
+
+        .drug-detail-section li {
+            margin: 8px 0;
+            padding-left: 20px;
+            position: relative;
+            line-height: 1.7;
+            color: #2d3748;
+        }
+
+        .drug-detail-section li::before {
+            content: "•";
+            color: #3498db;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .drug-detail-content {
+                background-color: #2c3136;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            }
+
+            .drug-detail-header {
+                background: #2c3136;
+                border-bottom-color: rgba(255,255,255,0.08);
+            }
+
+            .drug-detail-header h3 {
+                color: #e0e0e0;
+            }
+
+            .drug-detail-close {
+                background: rgba(255,255,255,0.08);
+                color: #b0b0b0;
+            }
+
+            .drug-detail-close:hover {
+                background: rgba(79,163,255,0.15);
+                color: #4fa3ff;
+            }
+
+            .drug-detail-section h4 {
+                color: #4fa3ff;
+            }
+
+            .drug-detail-section p,
+            .drug-detail-section li {
+                color: #d0d0d0;
+            }
+
+            .drug-detail-section li::before {
+                color: #4fa3ff;
+            }
+
+            .drug-detail-content::-webkit-scrollbar-thumb {
+                background-color: rgba(79,163,255,0.3);
+            }
+
+            .drug-detail-content::-webkit-scrollbar-thumb:hover {
+                background-color: rgba(79,163,255,0.5);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .drug-detail-content {
+                margin: 20px auto;
+                padding: 24px;
+                width: 92%;
+                border-radius: 14px;
+            }
+
+            .drug-detail-header {
+                margin-bottom: 20px;
+                padding-bottom: 14px;
+            }
+
+            .drug-detail-header h3 {
+                font-size: 1.25em;
+            }
+
+            .drug-detail-section {
+                margin-bottom: 20px;
+                font-size: 1em;
+            }
+
+            .drug-detail-section h4 {
+                font-size: 1.1em;
+                margin-bottom: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .drug-detail-content {
+                margin: 12px auto;
+                padding: 20px;
+                width: 94%;
+                border-radius: 12px;
+            }
+
+            .drug-detail-header {
+                margin-bottom: 16px;
+                padding-bottom: 12px;
+            }
+
+            .drug-detail-header h3 {
+                font-size: 1.2em;
+            }
+
+            .drug-detail-close {
+                width: 32px;
+                height: 32px;
+                font-size: 18px;
+            }
+
+            .drug-detail-section {
+                margin-bottom: 16px;
+                font-size: 0.95em;
+            }
+
+            .drug-detail-section h4 {
+                font-size: 1.05em;
+                margin-bottom: 8px;
+            }
+
+            .drug-detail-section p,
+            .drug-detail-section li {
+                margin: 8px 0;
+            }
+        }
+
+        .dictionary-toggle-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            min-width: 0;
+            cursor: pointer;
+            padding: 7px 18px;
+            border-radius: 999px;
+            background: rgba(52,152,219,0.07);
+            font-size: 1.02em;
+            font-weight: 500;
+            transition: background 0.18s;
+            user-select: none;
+            -webkit-user-select: none;
+            margin-bottom: 4px;
+            margin-left: 0;
+            margin-right: auto;
+            display: inline-flex;
+        }
+        .dictionary-toggle-bar:hover {
+            background: rgba(52,152,219,0.16);
+        }
+        .dictionary-toggle-bar .chevron {
+            font-size: 1.2em;
+            margin-left: 8px;
+            transition: transform 0.2s;
+        }
+        .dictionary-toggle-bar.collapsed .chevron {
+            transform: rotate(-90deg);
+        }
+
+        .input-group.mb-2 {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            margin-bottom: 16px;
+        }
+
+        .input-group.mb-2 .form-control {
+            border-radius: 24px 0 0 24px;
+            border: 1.5px solid #b5c9d6;
+            box-shadow: 0 1px 6px rgba(52,152,219,0.06);
+            font-size: 1.08em;
+            padding: 0 18px;
+            height: 44px;
+            background: #fff;
+            transition: border 0.18s, box-shadow 0.18s;
+            width: 100%;
+        }
+
+        .input-group.mb-2 .form-control:focus {
+            border-color: #3498db;
+            box-shadow: 0 2px 8px rgba(52,152,219,0.13);
+            outline: none;
+            background: #fafdff;
+        }
+
+        .input-group.mb-2 .btn {
+            border-radius: 0 24px 24px 0;
+            font-size: 1.08em;
+            padding: 0 16px;
+            height: 44px;
+            margin-left: -1px;
+            background: #3498db;
+            color: #fff;
+            border: 1.5px solid #3498db;
+            transition: background 0.18s, border 0.18s, color 0.18s;
+            box-shadow: 0 1px 6px rgba(52,152,219,0.06);
+            min-width: 80px;
+            max-width: 120px;
+            width: auto;
+        }
+
+        .input-group.mb-2 .btn:hover, .input-group.mb-2 .btn:focus {
+            background: #2176b6;
+            border-color: #2176b6;
+            color: #fff;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .input-group.mb-2 .form-control {
+                background: #23272a;
+                color: #e0e0e0;
+                border-color: #444;
+            }
+            .input-group.mb-2 .form-control:focus {
+                background: #2c3136;
+                border-color: #4fa3ff;
+            }
+            .input-group.mb-2 .btn {
+                background: #4fa3ff;
+                border-color: #4fa3ff;
+            }
+            .input-group.mb-2 .btn:hover, .input-group.mb-2 .btn:focus {
+                background: #357ab8;
+                border-color: #357ab8;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .input-group.mb-2 {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .input-group.mb-2 .form-control {
+                border-radius: 18px !important;
+                width: 100%;
+                min-width: 0;
+                height: 40px;
+                font-size: 1em;
+            }
+            .input-group.mb-2 .btn {
+                border-radius: 18px !important;
+                width: 100%;
+                min-width: 0;
+                max-width: 100%;
+                height: 40px;
+                font-size: 1em;
+                margin-left: 0;
+                padding: 0 10px;
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                max-width: 96vw;
+                padding: 18px;
+                border-radius: 9px;
+                margin: 24px auto 16px auto;
+            }
+        }
+        @media (max-width: 768px) {
+            .container {
+                max-width: 99vw;
+                padding: 12px;
+                border-radius: 11px;
+                margin: 12px auto 8px auto;
+            }
+            h1 {
+                font-size: 1.35em;
+            }
+        }
+        @media (max-width: 480px) {
+            .container {
+                max-width: 100vw;
+                padding: 6px;
+                border-radius: 14px;
+                margin: 0;
+            }
+            h1 {
+                font-size: 1.08em;
+            }
+        }
+
+        .example-drugs {
+            background: rgba(255,255,255,0.7);
+            color: #222;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            padding: 14px 18px 14px 18px !important;
+            margin-bottom: 20px;
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            opacity: 0;
+            position: relative;
+            display: none;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        .example-drugs.show {
+            display: block;
+            opacity: 1;
+            animation: fadeInDown 0.7s cubic-bezier(.4,1.4,.6,1);
+            pointer-events: auto;
+        }
+        @keyframes fadeInDown {
+            0% {
+                opacity: 0;
+                transform: translateY(-24px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .nav-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 4px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: auto;
+            min-width: 0;
+            cursor: pointer;
+            padding: 7px 18px;
+            border-radius: 999px;
+            background: rgba(52,152,219,0.07);
+            font-size: 1.02em;
+            font-weight: 500;
+            transition: background 0.18s;
+            user-select: none;
+            -webkit-user-select: none;
+            display: inline-flex;
+            gap: 6px;
+        }
+
+        .toggle-bar:hover {
+            background: rgba(52,152,219,0.16);
+        }
+
+        .toggle-bar.active {
+            background: rgba(52,152,219,0.13);
+        }
+
+        .toggle-bar i {
+            font-size: 0.9em;
+        }
+
+        .toggle-content {
+            display: none;
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            margin-top: 12px;
+        }
+
+        .toggle-content.show {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .toggle-bar {
+                background: rgba(52,152,219,0.1);
+                color: #e0e0e0;
+            }
+            .toggle-bar:hover {
+                background: rgba(52,152,219,0.2);
+            }
+            .toggle-bar.active {
+                background: rgba(52,152,219,0.15);
+            }
+        }
+
+        /* 언어 선택기 스타일 */
+        .language-selector {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .language-selector select {
+            padding: 8px 12px;
+            border: 1.5px solid #b5c9d6;
+            border-radius: 8px;
+            background-color: white;
+            color: #2c3e50;
+            font-size: 0.95em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+            background-size: 16px;
+            padding-right: 32px;
+        }
+
+        .language-selector select:hover {
+            border-color: #3498db;
+            box-shadow: 0 2px 8px rgba(52,152,219,0.13);
+        }
+
+        .language-selector select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 2px 8px rgba(52,152,219,0.13);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .language-selector select {
+                background-color: #23272a;
+                color: #e0e0e0;
+                border-color: #444;
+            }
+            .language-selector select:hover,
+            .language-selector select:focus {
+                border-color: #4fa3ff;
+                box-shadow: 0 2px 8px rgba(79,163,255,0.13);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .language-selector {
+                top: 10px;
+                right: 10px;
+            }
+            .language-selector select {
+                font-size: 0.9em;
+                padding: 6px 10px;
+            }
+        }
+    </style>
+    <style>
+    @media (prefers-color-scheme: dark) {
+        body {
+            background-color: #181a1b;
+            color: #e0e0e0;
+        }
+        .container {
+            background-color: #23272a;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+        .drug-select {
+            background-color: #23272a;
+            color: #e0e0e0;
+            border: 1px solid #444;
+        }
+        .drug-select:focus {
+            border-color: #4fa3ff;
+        }
+        .drug-list {
+            background-color: #23272a;
+            border: 1px solid #444;
+            color: #e0e0e0;
+        }
+        .drug-item:hover {
+            background-color: #2c3136;
+        }
+        .search-input {
+            background-color: #23272a;
+            color: #e0e0e0;
+            border-bottom: 1px solid #444;
+        }
+        button {
+            background-color: #4fa3ff;
+            color: #181a1b;
+        }
+        button:hover {
+            background-color: #357ab8;
+        }
+        #result {
+            background-color: #23272a;
+            color: #e0e0e0;
+        }
+        .warning {
+            background-color: #3a1a1a;
+            border: 1px solid #b71c1c;
+            color: #ffbdbd;
+        }
+        .safe {
+            background-color: #1b2a1b;
+            border: 1px solid #388e3c;
+            color: #b9f6ca;
+        }
+        .example-drugs {
+            background: rgba(35,39,42,0.7) !important;
+            color: #e0e0e0 !important;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+            padding: 14px 18px 14px 18px !important;
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+        }
+        h1 {
+            color: #e0e0e0;
+        }
+    }
+    </style>
+</head>
+<body>
+    <!-- 약물 상세 정보 모달 추가 -->
+    <div id="drugDetailModal" class="drug-detail-modal">
+        <div class="drug-detail-content">
+            <div class="drug-detail-header">
+                <h3 id="drugDetailTitle"></h3>
+                <button class="drug-detail-close" onclick="closeDrugDetail()">&times;</button>
+            </div>
+            <div id="drugDetailBody"></div>
+        </div>
+    </div>
+
+    <!-- 언어 선택기 추가 -->
+    <div class="language-selector">
+        <select id="languageSelect" onchange="changeLanguage(this.value)" aria-label="Select language">
+            <option value="ko">한국어</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="zh">中文</option>
+            <option value="pt">Português</option>
+        </select>
+    </div>
+
+    <div class="container">
+        <h1>약물 상호작용 확인</h1>
+
+        <!-- 약물 딕셔너리 섹션 수정 -->
+        <div class="drug-dictionary mb-4">
+            <div class="nav-bar">
+                <div id="dictionaryToggleBar" class="toggle-bar" onclick="toggleDictionary()">
+                    <span id="navDrugSearch">약물 검색</span>
+                    <span class="chevron"><i id="dictionaryChevron" class="fas fa-chevron-down"></i></span>
+                </div>
+                <div id="navAdverse" class="toggle-bar" onclick="toggleFeature('adverse')">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>부작용</span>
+                </div>
+                <div id="navRecall" class="toggle-bar" onclick="toggleFeature('recall')">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>리콜/경고</span>
+                </div>
+                <div id="navApproval" class="toggle-bar" onclick="toggleFeature('approval')">
+                    <i class="fas fa-check-circle"></i>
+                    <span>FDA 승인</span>
+                </div>
+            </div>
+
+            <!-- 약물 검색 컨텐츠 -->
+            <div id="dictionaryContent" class="dictionary-content">
+                <div class="input-group mb-2">
+                    <input type="text" id="drugSearch" class="form-control" 
+                           placeholder="약물명 검색 (영문)">
+                    <button id="drugSearchBtn" class="btn btn-outline-primary" onclick="searchDrug()">검색</button>
+                </div>
+                <div id="searchResults" class="search-results"></div>
+                <div id="recentSearches" class="recent-searches mt-2">
+                    <small id="recentSearchesLabel" class="text-muted">최근 검색어:</small>
+                    <div id="recentSearchesList" class="d-flex flex-wrap gap-1 mt-1"></div>
+                </div>
+            </div>
+
+            <!-- 부작용 검색 컨텐츠 -->
+            <div id="adverseContent" class="toggle-content">
+                <div class="input-group mb-2">
+                    <input type="text" id="adverseSearch" class="form-control" 
+                           placeholder="약물명으로 부작용 검색 (영문)">
+                    <button id="adverseSearchBtn" class="btn" onclick="searchAdverseEvents()">검색</button>
+                </div>
+                <div id="adverseResults" class="search-results"></div>
+            </div>
+
+            <!-- 리콜/경고 검색 컨텐츠 -->
+            <div id="recallContent" class="toggle-content">
+                <div class="input-group mb-2">
+                    <input type="text" id="recallSearch" class="form-control" 
+                           placeholder="약물명으로 리콜/경고 검색 (영문)">
+                    <button id="recallSearchBtn" class="btn" onclick="searchRecalls()">검색</button>
+                </div>
+                <div id="recallResults" class="search-results"></div>
+            </div>
+
+            <!-- FDA 승인 검색 컨텐츠 -->
+            <div id="approvalContent" class="toggle-content">
+                <div class="input-group mb-2">
+                    <input type="text" id="approvalSearch" class="form-control" 
+                           placeholder="약물명으로 FDA 승인 정보 검색 (영문)">
+                    <button id="approvalSearchBtn" class="btn" onclick="searchApprovals()">검색</button>
+                </div>
+                <div id="approvalResults" class="search-results"></div>
+            </div>
+        </div>
+
+        <!-- 약물 상호작용 확인 섹션 (항상 표시) -->
+        <div class="input-group">
+            <div class="drug-select-container">
+                <input type="text" class="drug-select" id="drug1" placeholder="첫 번째 약물을 입력하세요" autocomplete="off">
+                <div class="drug-list" id="drug1List">
+                    <div class="drug-items"></div>
+                </div>
+            </div>
+            <div class="drug-select-container">
+                <input type="text" class="drug-select" id="drug2" placeholder="두 번째 약물을 입력하세요" autocomplete="off">
+                <div class="drug-list" id="drug2List">
+                    <div class="drug-items"></div>
+                </div>
+            </div>
+            <button id="interactionBtn" onclick="checkInteraction()">상호작용 확인</button>
+        </div>
+
+        <div id="result"></div>
+        <div id="loading" style="display: none; text-align: center; margin-top: 20px;">
+            <p>약물 정보를 검색중입니다...</p>
+        </div>
+    </div>
+
+    <script>
+        // OpenFDA API 키
+        const API_KEY = 'y15g3aG5icGrBAWcxP7HUkQa5h9pUcBFaD8kkmjk';
+        const BASE_URL = 'https://api.fda.gov/drug/label.json';
+        
+        // Google Cloud Translation API 설정
+        const GOOGLE_TRANSLATE_API_KEY = 'YOUR_GOOGLE_CLOUD_API_KEY'; // 실제 API 키로 교체 필요
+        const GOOGLE_TRANSLATE_API_URL = 'https://translation.googleapis.com/language/translate/v2';
+
+        let searchTimeout1 = null;
+        let searchTimeout2 = null;
+        let currentDrug1 = null;
+        let currentDrug2 = null;
+
+        // 언어 관련 상수 및 변수
+        const TRANSLATIONS = {
+            ko: {
+                title: "약물 상호작용 확인",
+                navDrugSearch: "약물 검색",
+                navAdverse: "부작용",
+                navRecall: "리콜/경고",
+                navApproval: "FDA 승인",
+                searchPlaceholder: "약물명 검색 (영문)",
+                adversePlaceholder: "약물명으로 부작용 검색 (영문)",
+                recallPlaceholder: "약물명으로 리콜/경고 검색 (영문)",
+                approvalPlaceholder: "약물명으로 FDA 승인 정보 검색 (영문)",
+                searchButton: "검색",
+                firstDrugPlaceholder: "첫 번째 약물을 입력하세요",
+                secondDrugPlaceholder: "두 번째 약물을 입력하세요",
+                checkInteraction: "상호작용 확인",
+                loading: "약물 정보를 검색중입니다...",
+                translating: "약물 정보를 번역중입니다...",
+                noResults: "검색 결과가 없습니다",
+                error: "오류가 발생했습니다",
+                recentSearches: "최근 검색어:",
+                brandName: "상품명",
+                genericName: "일반명",
+                manufacturer: "제조사",
+                route: "제형",
+                substance: "성분명",
+                loadingDrugInfo: "약물 정보를 불러오는 중...",
+                minCharMsg: "검색어를 2글자 이상 입력하세요.",
+                
+                // 추가할 번역
+                basicInfo: "기본 정보",
+                description: "설명",
+                indications: "적응증 및 용법",
+                warnings: "주의사항",
+                adverseReactions: "부작용",
+                dosage: "용량 및 투여법",
+                interactions: "약물 상호작용",
+                disclaimer: "이 정보는 미국 FDA 데이터를 기반으로 하며, 자동 번역되었습니다.",
+                consultDoctor: "정확한 정보는 의사나 약사와 상담하시기 바랍니다.",
+                checkInteraction: "상호작용 확인해보기",
+                alreadySelected: "이미 첫 번째 약물에 선택된 약물입니다.",
+                alreadyTwoDrugs: "이미 두 가지 약물들이 상호작용 확인을 준비중입니다.",
+                tryAgain: "다른 검색어로 다시 시도해주세요.",
+                tryAgainLater: "잠시 후 다시 시도해주세요.",
+                brandLabel: "상품명",
+                genericLabel: "일반명"
+            },
+            en: {
+                title: "Drug Interaction Checker",
+                navDrugSearch: "Drug Search",
+                navAdverse: "Adverse Events",
+                navRecall: "Recall/Warning",
+                navApproval: "FDA Approval",
+                searchPlaceholder: "Search drug name (English)",
+                adversePlaceholder: "Search adverse events by drug name (English)",
+                recallPlaceholder: "Search recalls/warnings by drug name (English)",
+                approvalPlaceholder: "Search FDA approval by drug name (English)",
+                searchButton: "Search",
+                firstDrugPlaceholder: "Enter first drug",
+                secondDrugPlaceholder: "Enter second drug",
+                checkInteraction: "Check Interaction",
+                loading: "Searching drug information...",
+                translating: "Translating drug information...",
+                noResults: "No results found",
+                error: "An error occurred",
+                recentSearches: "Recent searches:",
+                brandName: "Brand Name",
+                genericName: "Generic Name",
+                manufacturer: "Manufacturer",
+                route: "Route",
+                substance: "Substance",
+                loadingDrugInfo: "Loading drug information...",
+                minCharMsg: "Please enter at least 2 characters.",
+                
+                // 추가할 번역
+                basicInfo: "Basic Information",
+                description: "Description",
+                indications: "Indications and Usage",
+                warnings: "Warnings",
+                adverseReactions: "Adverse Reactions",
+                dosage: "Dosage and Administration",
+                interactions: "Drug Interactions",
+                disclaimer: "This information is based on FDA data and has been automatically translated.",
+                consultDoctor: "Please consult your doctor or pharmacist for accurate information.",
+                checkInteraction: "Check Interaction",
+                alreadySelected: "This drug is already selected as the first drug.",
+                alreadyTwoDrugs: "Two drugs are already selected for interaction check.",
+                tryAgain: "Please try with a different search term.",
+                tryAgainLater: "Please try again later.",
+                brandLabel: "Brand",
+                genericLabel: "Generic"
+            },
+            ja: {
+                title: "薬物相互作用チェッカー",
+                navDrugSearch: "薬物検索",
+                navAdverse: "副作用",
+                navRecall: "リコール/警告",
+                navApproval: "FDA承認",
+                searchPlaceholder: "薬物名を検索（英語）",
+                adversePlaceholder: "薬物名で副作用を検索（英語）",
+                recallPlaceholder: "薬物名でリコール/警告を検索（英語）",
+                approvalPlaceholder: "薬物名でFDA承認を検索（英語）",
+                searchButton: "検索",
+                firstDrugPlaceholder: "最初の薬物を入力",
+                secondDrugPlaceholder: "2番目の薬物を入力",
+                checkInteraction: "相互作用を確認",
+                loading: "薬物情報を検索中...",
+                translating: "薬物情報を翻訳中...",
+                noResults: "検索結果がありません",
+                error: "エラーが発生しました",
+                recentSearches: "最近の検索:",
+                brandName: "商品名",
+                genericName: "一般名",
+                manufacturer: "製造会社",
+                route: "剤形",
+                substance: "成分名",
+                loadingDrugInfo: "薬物情報を読み込み中...",
+                minCharMsg: "2文字以上入力してください。",
+                
+                // 추가할 번역
+                basicInfo: "基本情報",
+                description: "説明",
+                indications: "適応症および用法",
+                warnings: "警告",
+                adverseReactions: "副作用",
+                dosage: "用量および投与法",
+                interactions: "薬物相互作用",
+                disclaimer: "この情報はFDAデータに基づいており、自動翻訳されています。",
+                consultDoctor: "正確な情報については医師または薬剤師にご相談ください。",
+                checkInteraction: "相互作用を確認",
+                alreadySelected: "この薬物は既に最初の薬物として選択されています。",
+                alreadyTwoDrugs: "既に2つの薬物が相互作用確認のために選択されています。",
+                tryAgain: "別の検索語でお試しください。",
+                tryAgainLater: "後でもう一度お試しください。",
+                brandLabel: "商品名",
+                genericLabel: "一般名"
+            },
+            zh: {
+                title: "药物相互作用检查器",
+                navDrugSearch: "药物搜索",
+                navAdverse: "不良反应",
+                navRecall: "召回/警告",
+                navApproval: "FDA批准",
+                searchPlaceholder: "搜索药物名称（英文）",
+                adversePlaceholder: "按药物名称搜索不良反应（英文）",
+                recallPlaceholder: "按药物名称搜索召回/警告（英文）",
+                approvalPlaceholder: "按药物名称搜索FDA批准（英文）",
+                searchButton: "搜索",
+                firstDrugPlaceholder: "输入第一种药物",
+                secondDrugPlaceholder: "输入第二种药物",
+                checkInteraction: "检查相互作用",
+                loading: "正在搜索药物信息...",
+                translating: "正在翻译药物信息...",
+                noResults: "未找到结果",
+                error: "发生错误",
+                recentSearches: "最近搜索:",
+                brandName: "商品名",
+                genericName: "通用名",
+                manufacturer: "制造商",
+                route: "剂型",
+                substance: "成分名",
+                loadingDrugInfo: "正在加载药物信息...",
+                minCharMsg: "请输入至少2个字符。",
+                
+                // 추가할 번역
+                basicInfo: "基本信息",
+                description: "说明",
+                indications: "适应症及用法",
+                warnings: "警告",
+                adverseReactions: "不良反应",
+                dosage: "剂量及给药方法",
+                interactions: "药物相互作用",
+                disclaimer: "此信息基于FDA数据，已自动翻译。",
+                consultDoctor: "请咨询医生或药剂师获取准确信息。",
+                checkInteraction: "检查相互作用",
+                alreadySelected: "该药物已被选为第一种药物。",
+                alreadyTwoDrugs: "已选择两种药物进行相互作用检查。",
+                tryAgain: "请尝试其他搜索词。",
+                tryAgainLater: "请稍后再试。",
+                brandLabel: "商品名",
+                genericLabel: "通用名"
+            },
+            pt: {
+                title: "Verificador de Interações Medicamentosas",
+                navDrugSearch: "Buscar Medicamento",
+                navAdverse: "Eventos Adversos",
+                navRecall: "Recall/Aviso",
+                navApproval: "Aprovação FDA",
+                searchPlaceholder: "Buscar nome do medicamento (Inglês)",
+                adversePlaceholder: "Buscar eventos adversos por nome (Inglês)",
+                recallPlaceholder: "Buscar recall/aviso por nome (Inglês)",
+                approvalPlaceholder: "Buscar aprovação FDA por nome (Inglês)",
+                searchButton: "Buscar",
+                firstDrugPlaceholder: "Digite o primeiro medicamento",
+                secondDrugPlaceholder: "Digite o segundo medicamento",
+                checkInteraction: "Verificar Interação",
+                loading: "Buscando informações do medicamento...",
+                translating: "Traduzindo informações do medicamento...",
+                noResults: "Nenhum resultado encontrado",
+                error: "Ocorreu um erro",
+                recentSearches: "Buscas recentes:",
+                brandName: "Nome Comercial",
+                genericName: "Nome Genérico",
+                manufacturer: "Fabricante",
+                route: "Via de Administração",
+                substance: "Substância",
+                loadingDrugInfo: "Carregando informações do medicamento...",
+                minCharMsg: "Digite pelo menos 2 caracteres.",
+                
+                // 추가할 번역
+                basicInfo: "Informações Básicas",
+                description: "Descrição",
+                indications: "Indicações e Uso",
+                warnings: "Avisos",
+                adverseReactions: "Reações Adversas",
+                dosage: "Dosagem e Administração",
+                interactions: "Interações Medicamentosas",
+                disclaimer: "Esta informação é baseada em dados da FDA e foi traduzida automaticamente.",
+                consultDoctor: "Consulte seu médico ou farmacêutico para informações precisas.",
+                checkInteraction: "Verificar Interação",
+                alreadySelected: "Este medicamento já está selecionado como primeiro medicamento.",
+                alreadyTwoDrugs: "Dois medicamentos já estão selecionados para verificação de interação.",
+                tryAgain: "Por favor, tente com um termo de busca diferente.",
+                tryAgainLater: "Por favor, tente novamente mais tarde.",
+                brandLabel: "Marca",
+                genericLabel: "Genérico"
+            }
+        };
+
+        // 현재 언어 설정
+        let currentLanguage = localStorage.getItem('preferredLanguage') || 'ko';
+
+        // 언어 변경 함수
+        function changeLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('preferredLanguage', lang);
+            updateUILanguage();
+        }
+
+        // UI 언어 업데이트 함수
+        function updateUILanguage() {
+            const t = TRANSLATIONS[currentLanguage];
+            document.title = t.title;
+            document.querySelector('h1').textContent = t.title;
+            // 네비게이션/탭 버튼
+            if(document.getElementById('navDrugSearch')) document.getElementById('navDrugSearch').textContent = t.navDrugSearch;
+            if(document.getElementById('navAdverse')) document.getElementById('navAdverse').querySelector('span').textContent = t.navAdverse;
+            if(document.getElementById('navRecall')) document.getElementById('navRecall').querySelector('span').textContent = t.navRecall;
+            if(document.getElementById('navApproval')) document.getElementById('navApproval').querySelector('span').textContent = t.navApproval;
+            // 검색창 placeholder
+            if(document.getElementById('drugSearch')) document.getElementById('drugSearch').placeholder = t.searchPlaceholder;
+            if(document.getElementById('adverseSearch')) document.getElementById('adverseSearch').placeholder = t.adversePlaceholder;
+            if(document.getElementById('recallSearch')) document.getElementById('recallSearch').placeholder = t.recallPlaceholder;
+            if(document.getElementById('approvalSearch')) document.getElementById('approvalSearch').placeholder = t.approvalPlaceholder;
+            // 버튼
+            if(document.getElementById('drugSearchBtn')) document.getElementById('drugSearchBtn').textContent = t.searchButton;
+            if(document.getElementById('adverseSearchBtn')) document.getElementById('adverseSearchBtn').textContent = t.searchButton;
+            if(document.getElementById('recallSearchBtn')) document.getElementById('recallSearchBtn').textContent = t.searchButton;
+            if(document.getElementById('approvalSearchBtn')) document.getElementById('approvalSearchBtn').textContent = t.searchButton;
+            if(document.getElementById('interactionBtn')) document.getElementById('interactionBtn').textContent = t.checkInteraction;
+            // 약물 입력 필드
+            if(document.getElementById('drug1')) document.getElementById('drug1').placeholder = t.firstDrugPlaceholder;
+            if(document.getElementById('drug2')) document.getElementById('drug2').placeholder = t.secondDrugPlaceholder;
+            // 최근 검색어
+            if(document.getElementById('recentSearchesLabel')) document.getElementById('recentSearchesLabel').textContent = t.recentSearches;
+            // 기타 동적 메시지(로딩 등)는 각 함수에서 t.loading 등으로 사용
+        }
+
+        // 페이지 로드 시 저장된 언어 설정 적용
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLanguage = localStorage.getItem('preferredLanguage') || 'ko';
+            document.getElementById('languageSelect').value = savedLanguage;
+            changeLanguage(savedLanguage);
+            
+            // 기존의 DOMContentLoaded 이벤트 핸들러 내용...
+        });
+
+        // 번역 함수 수정
+        async function translateToKorean(text) {
+            if (!text || text.trim().length === 0) return '';
+            
+            // 현재 언어가 한국어가 아닌 경우에만 번역
+            if (currentLanguage !== 'ko') {
+                try {
+                    const response = await fetch('http://localhost:3000/api/translate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            targetLanguage: currentLanguage
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    return data.translatedText || text;
+                } catch (e) {
+                    console.error('Translation error:', e);
+                    return text;
+                }
+            }
+            return text;
+        }
+
+        // 여러 텍스트 동시 번역 함수 수정
+        async function translateMultipleTexts(texts) {
+            if (currentLanguage === 'en') return texts; // 영어인 경우 번역 불필요
+            
+            const translatedTexts = [];
+            for (let text of texts) {
+                if (!text || text.trim().length === 0) {
+                    translatedTexts.push('');
+                    continue;
+                }
+                
+                try {
+                    const response = await fetch('http://localhost:3000/api/translate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            targetLanguage: currentLanguage
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    translatedTexts.push(data.translatedText || text);
+                } catch (e) {
+                    console.error('Batch translation error:', e);
+                    translatedTexts.push(text); // 에러시 원문 사용
+                }
+            }
+            return translatedTexts;
+        }
+
+        // 약물 검색 함수 (기존 함수 복원)
+        async function searchDrugs(query, drugNumber) {
+            if (!query || query.length < 2) return;
+            
+            const loadingDiv = document.getElementById('loading');
+            const drugList = document.getElementById(`drug${drugNumber}List`);
+            const itemsContainer = drugList.querySelector('.drug-items');
+            
+            try {
+                loadingDiv.style.display = 'block';
+                
+                // 검색 쿼리 단순화
+                const searchQuery = query.trim();
+                const response = await fetch(`${BASE_URL}?api_key=${API_KEY}&search=openfda.brand_name:"${searchQuery}"+OR+openfda.generic_name:"${searchQuery}"&limit=20`);
+                const data = await response.json();
+                
+                console.log('API Response:', data); // 디버깅용 로그
+                
+                itemsContainer.innerHTML = '';
+                
+                if (data.results && data.results.length > 0) {
+                    const uniqueDrugs = new Set();
+                    
+                    data.results.forEach(drug => {
+                        if (!drug.openfda) return; // openfda 데이터가 없는 경우 스킵
+                        
+                        const brandNames = drug.openfda.brand_name || [];
+                        const genericNames = drug.openfda.generic_name || [];
+                        
+                        // 브랜드명과 일반명 처리
+                        [...brandNames, ...genericNames].forEach(name => {
+                            if (!uniqueDrugs.has(name)) {
+                                uniqueDrugs.add(name);
+                                const div = document.createElement('div');
+                                div.className = 'drug-item';
+                                
+                                // 약물 유형 결정
+                                const type = brandNames.includes(name) ? '상품명' : '일반명';
+                                
+                                // 추가 정보 구성
+                                let additionalInfo = '';
+                                if (type === '상품명' && genericNames.length > 0) {
+                                    additionalInfo = ` (${genericNames[0]})`;
+                                }
+                                
+                                div.textContent = `${name}${additionalInfo} [${type}]`;
+                                div.onclick = () => {
+                                    document.getElementById(`drug${drugNumber}`).value = name;
+                                    if (drugNumber === 1) {
+                                        currentDrug1 = drug;
+                                    } else {
+                                        currentDrug2 = drug;
+                                    }
+                                    drugList.classList.remove('show');
+                                };
+                                itemsContainer.appendChild(div);
+                            }
+                        });
+                    });
+                } else {
+                    // 검색 결과가 없을 때 도움말 표시
+                    itemsContainer.innerHTML = `
+                        <div class="drug-item" style="color: #666;">
+                            <p>검색 결과가 없습니다. 다음을 확인해주세요:</p>
+                            <ul style="margin: 5px 0; padding-left: 20px;">
+                                <li>영문명으로 정확히 입력했는지 확인 (예: "Aspirin", "Warfarin")</li>
+                                <li>대소문자를 정확히 입력했는지 확인</li>
+                                <li>예시 약물 중 하나로 먼저 테스트해보세요</li>
+                            </ul>
+                            <p style="margin-top: 10px; font-size: 0.9em;">
+                                예시 검색어:<br>
+                                - Aspirin<br>
+                                - Warfarin<br>
+                                - Ibuprofen
+                            </p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error fetching drug data:', error);
+                itemsContainer.innerHTML = `
+                    <div class="drug-item" style="color: #dc3545;">
+                        <p>검색 중 오류가 발생했습니다.</p>
+                        <p style="font-size: 0.9em;">잠시 후 다시 시도해주세요.</p>
+                    </div>
+                `;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+
+        // 딕셔너리용 검색 함수 수정
+        async function searchDrug() {
+            const t = TRANSLATIONS[currentLanguage];
+            let searchInput = document.getElementById('drugSearch').value.trim();
+            const resultsDiv = document.getElementById('searchResults');
+            if (!searchInput || searchInput.length < 2) {
+                resultsDiv.innerHTML = `<div class="text-muted">${t.minCharMsg}</div>`;
+                return;
+            }
+            // 영어가 아니면 번역
+            if (!/^[a-zA-Z0-9\s]+$/.test(searchInput)) {
+                resultsDiv.innerHTML = `<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div><div>${t.translating || '번역중...'}</div></div>`;
+                try {
+                    const response = await fetch(`${GOOGLE_TRANSLATE_API_URL}?key=${GOOGLE_TRANSLATE_API_KEY}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            q: searchInput,
+                            source: currentLanguage,
+                            target: 'en',
+                            format: 'text'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.data && data.data.translations && data.data.translations[0]) {
+                        searchInput = data.data.translations[0].translatedText;
+                    }
+                } catch (e) {
+                    resultsDiv.innerHTML = `<div class="text-danger">${t.error}</div>`;
+                    return;
+                }
+            }
+
+            resultsDiv.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
+
+            try {
+                const response = await fetch(`${BASE_URL}?api_key=${API_KEY}&search=openfda.brand_name:"${searchInput}"+OR+openfda.generic_name:"${searchInput}"&limit=20`);
+                const data = await response.json();
+                
+                if (!data.results || data.results.length === 0) {
+                    resultsDiv.innerHTML = `<div class="text-muted">검색 결과가 없습니다. 다른 검색어를 시도해보세요.</div>`;
+                    return;
+                }
+
+                const uniqueDrugs = new Set();
+                const drugResults = [];
+
+                data.results.forEach(drug => {
+                    if (!drug.openfda) return;
+                    
+                    const brandNames = drug.openfda.brand_name || [];
+                    const genericNames = drug.openfda.generic_name || [];
+                    const manufacturer = drug.openfda.manufacturer_name?.[0] || '';
+                    const route = drug.openfda.route?.[0] || '';
+                    const substance = drug.openfda.substance_name?.[0] || '';
+                    
+                    
+                    [...brandNames, ...genericNames].forEach(name => {
+                        if (!uniqueDrugs.has(name)) {
+                            uniqueDrugs.add(name);
+                            const type = brandNames.includes(name) ? '상품명' : '일반명';
+                            const additionalInfo = type === '상품명' && genericNames.length > 0 ? genericNames[0] : '';
+                            drugResults.push({
+                                name: name,
+                                type: type,
+                                additionalInfo: additionalInfo,
+                                manufacturer: manufacturer,
+                                route: route,
+                                substance: substance
+                            });
+                        }
+                    });
+                });
+
+                if (drugResults.length === 0) {
+                    resultsDiv.innerHTML = `<div class="text-muted">검색 결과가 없습니다. 다른 검색어를 시도해보세요.</div>`;
+                    return;
+                }
+
+                resultsDiv.innerHTML = drugResults.map(drug => `
+                    <div class="drug-item" onclick="showDrugDetail('${drug.name}')">
+                        <div class="drug-name">
+                            ${drug.name}
+                            <span class="drug-type-badge ${drug.type === '일반명' ? 'generic' : ''}">${drug.type === '상품명' ? t.brandLabel : t.genericLabel}</span>
+                        </div>
+                        ${drug.additionalInfo ? `<div class="drug-detail">${drug.type === '상품명' ? t.genericLabel + ': ' + drug.additionalInfo : ''}</div>` : ''}
+                        <div class="drug-meta">
+                            ${drug.manufacturer ? `<span><i class="fas fa-industry"></i> ${drug.manufacturer}</span>` : ''}
+                            ${drug.route ? `<span><i class="fas fa-syringe"></i> ${drug.route}</span>` : ''}
+                            ${drug.substance ? `<span><i class="fas fa-flask"></i> ${drug.substance}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+
+                addToRecentSearches(searchInput);
+            } catch (error) {
+                console.error('Error fetching drug data:', error);
+                resultsDiv.innerHTML = `<div class="text-danger">검색 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.</div>`;
+            }
+        }
+
+        // 드롭다운 초기화 함수
+        function initializeDropdowns() {
+            const containers = document.querySelectorAll('.drug-select-container');
+            
+            containers.forEach((container, index) => {
+                const select = container.querySelector('.drug-select');
+                const list = container.querySelector('.drug-list');
+                const drugNumber = index + 1;
+                
+                // 입력 이벤트
+                select.addEventListener('input', (e) => {
+                    const query = e.target.value.trim();
+                    
+                    // 이전 타임아웃 취소
+                    if (drugNumber === 1) {
+                        clearTimeout(searchTimeout1);
+                        searchTimeout1 = setTimeout(() => searchDrugs(query, drugNumber), 300);
+                    } else {
+                        clearTimeout(searchTimeout2);
+                        searchTimeout2 = setTimeout(() => searchDrugs(query, drugNumber), 300);
+                    }
+                    
+                    list.classList.add('show');
+                });
+
+                // 클릭 이벤트
+                select.addEventListener('click', () => {
+                    if (select.value.trim().length >= 2) {
+                        list.classList.toggle('show');
+                    }
+                });
+
+                // 외부 클릭시 드롭다운 닫기
+                document.addEventListener('click', (e) => {
+                    if (!container.contains(e.target)) {
+                        list.classList.remove('show');
+                    }
+                });
+            });
+        }
+
+        // 페이지 로드시 드롭다운 초기화
+        document.addEventListener('DOMContentLoaded', initializeDropdowns);
+
+        async function checkInteraction() {
+            const drug1 = document.getElementById('drug1').value.trim();
+            const drug2 = document.getElementById('drug2').value.trim();
+            const resultDiv = document.getElementById('result');
+            const loadingDiv = document.getElementById('loading');
+
+            if (!drug1 || !drug2) {
+                alert('두 약물을 모두 입력해주세요.');
+                return;
+            }
+
+            if (drug1 === drug2) {
+                alert('서로 다른 약물을 선택해주세요.');
+                return;
+            }
+
+            try {
+                loadingDiv.style.display = 'block';
+                resultDiv.style.display = 'none';
+                loadingDiv.innerHTML = '<p>약물 정보를 검색중입니다...<br>번역이 필요할 경우 시간이 더 걸릴 수 있습니다.</p>';
+
+                const searchQuery = `openfda.brand_name:"${drug1}"+OR+openfda.generic_name:"${drug1}"`;
+                const response = await fetch(`${BASE_URL}?api_key=${API_KEY}&search=${searchQuery}`);
+                const data = await response.json();
+
+                if (data.results && data.results.length > 0) {
+                    const drugInfo = data.results[0];
+                    const interactions = drugInfo.drug_interactions || [];
+                    const warnings = drugInfo.warnings || [];
+                    const precautions = drugInfo.precautions || [];
+                    
+                    if (interactions.length > 0 || warnings.length > 0 || precautions.length > 0) {
+                        // 번역이 필요한 텍스트 수집
+                        const textsToTranslate = [
+                            ...interactions,
+                            ...warnings,
+                            ...precautions
+                        ];
+
+                        // 모든 텍스트 번역
+                        loadingDiv.innerHTML = '<p>약물 정보를 한국어로 번역중입니다...</p>';
+                        const translatedTexts = await translateMultipleTexts(textsToTranslate);
+
+                        // 번역된 텍스트 분류
+                        const translatedInteractions = translatedTexts.slice(0, interactions.length);
+                        const translatedWarnings = translatedTexts.slice(interactions.length, interactions.length + warnings.length);
+                        const translatedPrecautions = translatedTexts.slice(interactions.length + warnings.length);
+
+                        resultDiv.className = 'warning';
+                        resultDiv.style.display = 'block';
+                        
+                        let content = `
+                            <h3>⚠️ 상호작용 발견</h3>
+                            <p><strong>${drug1}</strong>와(과) <strong>${drug2}</strong>의 상호작용:</p>
+                        `;
+
+                        if (translatedInteractions.length > 0) {
+                            content += `
+                                <h4>약물 상호작용</h4>
+                                <ul>
+                                    ${translatedInteractions.map(interaction => `<li>${interaction}</li>`).join('')}
+                                </ul>
+                            `;
+                        }
+
+                        if (translatedWarnings.length > 0) {
+                            content += `
+                                <h4>주의사항</h4>
+                                <ul>
+                                    ${translatedWarnings.map(warning => `<li>${warning}</li>`).join('')}
+                                </ul>
+                            `;
+                        }
+
+                        if (translatedPrecautions.length > 0) {
+                            content += `
+                                <h4>예방조치</h4>
+                                <ul>
+                                    ${translatedPrecautions.map(precaution => `<li>${precaution}</li>`).join('')}
+                                </ul>
+                            `;
+                        }
+
+                        content += `
+                            <p>※ 이는 참고용 정보이며, 실제 약물 복용 전 반드시 의사나 약사와 상담하세요.</p>
+                            <p style="font-size: 0.9em; color: #666;">
+                                참고: 이 정보는 미국 FDA 데이터를 기반으로 하며,<br>
+                                한국에서 사용되는 약물명과 다를 수 있습니다.<br>
+                                번역은 자동 번역으로, 전문적인 의학 용어는 정확하지 않을 수 있습니다.
+                            </p>
+                        `;
+                        resultDiv.innerHTML = content;
+                    } else {
+                        resultDiv.className = 'safe';
+                        resultDiv.style.display = 'block';
+                        resultDiv.innerHTML = `
+                            <h3>✅ 상호작용 없음</h3>
+                            <p><strong>${drug1}</strong>와(과) <strong>${drug2}</strong> 사이에 알려진 상호작용이 없습니다.</p>
+                            <p>※ 이는 참고용 정보이며, 실제 약물 복용 전 반드시 의사나 약사와 상담하세요.</p>
+                            <p style="font-size: 0.9em; color: #666;">
+                                참고: 이 정보는 미국 FDA 데이터를 기반으로 하며,<br>
+                                한국에서 사용되는 약물명과 다를 수 있습니다.
+                            </p>
+                        `;
+                    }
+                } else {
+                    resultDiv.className = 'warning';
+                    resultDiv.style.display = 'block';
+                    resultDiv.innerHTML = `
+                        <h3>⚠️ 약물 정보 없음</h3>
+                        <p>입력하신 약물 중 하나 이상이 데이터베이스에서 찾을 수 없습니다.</p>
+                        <p>다음 사항을 확인해주세요:</p>
+                        <ul>
+                            <li>영문명으로 정확히 입력했는지 확인 (예: "Aspirin", "Warfarin")</li>
+                            <li>대소문자를 정확히 입력했는지 확인</li>
+                            <li>예시 약물 중 하나로 먼저 테스트해보세요</li>
+                        </ul>
+                        <p style="margin-top: 10px; font-size: 0.9em;">
+                            예시 검색어:<br>
+                            - Aspirin<br>
+                            - Warfarin<br>
+                            - Ibuprofen
+                        </p>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error checking interactions:', error);
+                resultDiv.className = 'warning';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <h3>⚠️ 오류 발생</h3>
+                    <p>약물 상호작용 정보를 가져오는 중 오류가 발생했습니다.</p>
+                    <p>잠시 후 다시 시도해주세요.</p>
+                `;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+
+        // 약물 딕셔너리 관련 함수들
+        let recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+        const maxRecentSearches = 5;
+
+        function toggleDictionary() {
+            const content = document.getElementById('dictionaryContent');
+            const bar = document.getElementById('dictionaryToggleBar');
+            const chevron = document.getElementById('dictionaryChevron');
+            const exampleDrugs = document.querySelector('.example-drugs');
+            const isOpen = content.classList.contains('show');
+            if (!isOpen) {
+                // 열기
+                content.classList.remove('fade-out');
+                content.classList.add('show');
+                bar.classList.remove('collapsed');
+                chevron.classList.remove('fa-chevron-up');
+                chevron.classList.add('fa-chevron-down');
+                setTimeout(() => {
+                    exampleDrugs && exampleDrugs.classList.add('show');
+                }, 200);
+            } else {
+                // 닫기
+                content.classList.remove('show');
+                content.classList.add('fade-out');
+                bar.classList.add('collapsed');
+                chevron.classList.remove('fa-chevron-down');
+                chevron.classList.add('fa-chevron-up');
+                exampleDrugs && exampleDrugs.classList.remove('show');
+                setTimeout(() => {
+                    content.classList.remove('fade-out');
+                }, 400);
+            }
+        }
+
+        function addToRecentSearches(drug) {
+            recentSearches = [drug, ...recentSearches.filter(d => d !== drug)].slice(0, maxRecentSearches);
+            localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+            updateRecentSearches();
+        }
+
+        function updateRecentSearches() {
+            const container = document.getElementById('recentSearchesList');
+            container.innerHTML = recentSearches.map(drug => `
+                <span class="recent-tag" onclick="useRecentSearch('${drug}')">${drug}</span>
+            `).join('');
+        }
+
+        function useRecentSearch(drug) {
+            document.getElementById('drugSearch').value = drug;
+            searchDrug();
+        }
+
+        function selectDrug(drug) {
+            // 첫 번째 빈 입력 필드에 선택한 약물 이름 입력
+            const drug1 = document.getElementById('drug1');
+            const drug2 = document.getElementById('drug2');
+            
+            if (!drug1.value) {
+                drug1.value = drug;
+            } else if (!drug2.value) {
+                drug2.value = drug;
+            } else {
+                // 두 필드가 모두 채워져 있으면 첫 번째 필드 업데이트
+                drug1.value = drug;
+            }
+        }
+
+        // 페이지 로드 시 최근 검색어 표시
+        document.addEventListener('DOMContentLoaded', () => {
+            updateRecentSearches();
+            // 실시간 검색 (디바운스)
+            let searchTimeout = null;
+            document.getElementById('drugSearch').addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    searchDrug();
+                }, 300);
+            });
+            // Enter 키로도 검색
+            document.getElementById('drugSearch').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchDrug();
+                }
+            });
+        });
+
+        // 약물 상세 정보 관련 함수들
+        async function showDrugDetail(drugName) {
+            const t = TRANSLATIONS[currentLanguage];
+            const modal = document.getElementById('drugDetailModal');
+            const title = document.getElementById('drugDetailTitle');
+            const body = document.getElementById('drugDetailBody');
+            
+            modal.style.display = 'block';
+            title.textContent = drugName;
+            body.innerHTML = `
+                <div style="text-align: center; padding: 20px;">
+                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+                    <p class="mt-3" style="color: #666;">${t.loadingDrugInfo || '약물 정보를 불러오는 중...'}</p>
+                </div>`;
+
+            try {
+                // API 호출 시 특수문자 처리
+                const encodedDrugName = encodeURIComponent(drugName);
+                const response = await fetch(`${BASE_URL}?api_key=${API_KEY}&search=openfda.brand_name:"${encodedDrugName}"+OR+openfda.generic_name:"${encodedDrugName}"&limit=1`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('API Response:', data); // 디버깅용 로그
+
+                if (!data.results || data.results.length === 0) {
+                    body.innerHTML = `
+                        <div class="drug-detail-section">
+                            <p style="color: #dc3545; text-align: center;">
+                                ${t.noResults || '약물 정보를 찾을 수 없습니다.'}
+                            </p>
+                            <p style="text-align: center; margin-top: 12px; color: #666;">
+                                ${t.tryAgain || '다른 검색어로 다시 시도해주세요.'}
+                            </p>
+                        </div>`;
+                    return;
+                }
+
+                const drug = data.results[0];
+                const openfda = drug.openfda || {};
+
+                // 안전하게 첫 번째 값 가져오기
+                function safeFirst(arr) {
+                    return Array.isArray(arr) && arr.length > 0 ? arr[0] : '';
+                }
+
+                // 번역이 필요한 텍스트 수집
+                const textsToTranslate = [
+                    safeFirst(drug.description),
+                    safeFirst(drug.indications_and_usage),
+                    safeFirst(drug.warnings),
+                    safeFirst(drug.adverse_reactions),
+                    safeFirst(drug.dosage_and_administration),
+                    safeFirst(drug.drug_interactions)
+                ].filter(text => text && text.trim().length > 0);
+
+                // 번역 수행
+                const translatedTexts = await translateMultipleTexts(textsToTranslate);
+                console.log('Translated texts:', translatedTexts); // 디버깅용 로그
+
+                // HTML 구성
+                let html = `
+                    <div class="drug-detail-section">
+                        <h4><i class="fas fa-info-circle"></i> ${t.basicInfo || '기본 정보'}</h4>
+                        <p><strong>${t.brandName}:</strong> ${(openfda.brand_name || []).join(', ') || '-'}</p>
+                        <p><strong>${t.genericName}:</strong> ${(openfda.generic_name || []).join(', ') || '-'}</p>
+                        <p><strong>${t.manufacturer}:</strong> ${(openfda.manufacturer_name || []).join(', ') || '-'}</p>
+                        <p><strong>${t.route}:</strong> ${(openfda.route || []).join(', ') || '-'}</p>
+                    </div>`;
+
+                // 각 섹션 추가
+                const sections = [
+                    { key: 'description', title: t.description || '설명', icon: 'fas fa-file-alt' },
+                    { key: 'indications_and_usage', title: t.indications || '적응증 및 용법', icon: 'fas fa-check-circle' },
+                    { key: 'warnings', title: t.warnings || '주의사항', icon: 'fas fa-exclamation-triangle' },
+                    { key: 'adverse_reactions', title: t.adverseReactions || '부작용', icon: 'fas fa-heartbeat' },
+                    { key: 'dosage_and_administration', title: t.dosage || '용량 및 투여법', icon: 'fas fa-syringe' },
+                    { key: 'drug_interactions', title: t.interactions || '약물 상호작용', icon: 'fas fa-pills' }
+                ];
+
+                sections.forEach((section, index) => {
+                    const originalText = safeFirst(drug[section.key]);
+                    if (originalText) {
+                        const translatedText = translatedTexts[index] || originalText;
+                        html += `
+                            <div class="drug-detail-section">
+                                <h4><i class="${section.icon}"></i> ${section.title}</h4>
+                                <p>${translatedText}</p>
+                            </div>`;
+                    }
+                });
+
+                // 주의사항 추가
+                html += `
+                    <div class="drug-detail-section" style="margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(0,0,0,0.08);">
+                        <p style="color: #666; font-size: 0.9em; line-height: 1.6;">
+                            ※ ${t.disclaimer || '이 정보는 미국 FDA 데이터를 기반으로 하며, 자동 번역되었습니다.'}<br>
+                            ${t.consultDoctor || '정확한 정보는 의사나 약사와 상담하시기 바랍니다.'}
+                        </p>
+                    </div>
+                    <div style="text-align: center; margin-top: 24px;">
+                        <button id="pushToStackBtn" class="btn btn-primary" 
+                                style="min-width: 180px; font-size: 1.08em; border-radius: 22px; padding: 10px 24px;">
+                            ${t.checkInteraction || '상호작용 확인해보기'}
+                        </button>
+                        <div id="stackWarningMsg" style="display: none; color: #dc3545; margin-top: 12px; font-size: 0.95em;"></div>
+                    </div>`;
+
+                body.innerHTML = html;
+
+                // 버튼 이벤트 바인딩
+                const btn = document.getElementById('pushToStackBtn');
+                if (btn) {
+                    btn.onclick = function() {
+                        const drug1 = document.getElementById('drug1');
+                        const drug2 = document.getElementById('drug2');
+                        const warning = document.getElementById('stackWarningMsg');
+                        
+                        if (!drug1.value) {
+                            drug1.value = drugName;
+                            closeDrugDetail();
+                        } else if (!drug2.value) {
+                            if (drug1.value === drugName) {
+                                warning.textContent = t.alreadySelected || '이미 첫 번째 약물에 선택된 약물입니다.';
+                                warning.style.display = 'block';
+                                setTimeout(() => { warning.style.display = 'none'; }, 2000);
+                                return;
+                            }
+                            drug2.value = drugName;
+                            closeDrugDetail();
+                        } else {
+                            warning.textContent = t.alreadyTwoDrugs || '이미 두 가지 약물들이 상호작용 확인을 준비중입니다.';
+                            warning.style.display = 'block';
+                            setTimeout(() => { warning.style.display = 'none'; }, 2000);
+                        }
+                    };
+                }
+
+            } catch (error) {
+                console.error('Error fetching drug details:', error);
+                body.innerHTML = `
+                    <div class="drug-detail-section">
+                        <p style="color: #dc3545; text-align: center;">
+                            ${t.error || '오류가 발생했습니다.'}
+                        </p>
+                        <p style="text-align: center; margin-top: 12px; color: #666;">
+                            ${t.tryAgainLater || '잠시 후 다시 시도해주세요.'}
+                        </p>
+                        <p style="text-align: center; margin-top: 8px; font-size: 0.9em; color: #999;">
+                            ${error.message}
+                        </p>
+                    </div>`;
+            }
+        }
+
+        function closeDrugDetail() {
+            document.getElementById('drugDetailModal').style.display = 'none';
+        }
+
+        // 모달 외부 클릭시 닫기
+        window.onclick = function(event) {
+            const modal = document.getElementById('drugDetailModal');
+            if (event.target === modal) {
+                closeDrugDetail();
+            }
+        }
+
+        // 기능 토글 함수
+        function toggleFeature(featureName) {
+            const toggleBar = event.currentTarget;
+            const content = document.getElementById(`${featureName}Content`);
+            const isActive = toggleBar.classList.contains('active');
+
+            // 다른 모든 토글 버튼 비활성화
+            document.querySelectorAll('.toggle-bar').forEach(bar => {
+                if (bar !== toggleBar) {
+                    bar.classList.remove('active');
+                }
+            });
+
+            // 다른 모든 컨텐츠 숨기기
+            document.querySelectorAll('.toggle-content').forEach(cont => {
+                if (cont !== content) {
+                    cont.classList.remove('show');
+                }
+            });
+
+            // 현재 토글 상태 변경
+            if (isActive) {
+                toggleBar.classList.remove('active');
+                content.classList.remove('show');
+            } else {
+                toggleBar.classList.add('active');
+                content.classList.add('show');
+            }
+        }
+
+        // 부작용 검색 함수
+        async function searchAdverseEvents() {
+            const t = TRANSLATIONS[currentLanguage];
+            let searchInput = document.getElementById('adverseSearch').value.trim();
+            const resultsDiv = document.getElementById('adverseResults');
+            if (!searchInput || searchInput.length < 2) {
+                resultsDiv.innerHTML = `<div class="text-muted">${t.minCharMsg}</div>`;
+                return;
+            }
+            if (!/^[a-zA-Z0-9\s]+$/.test(searchInput)) {
+                resultsDiv.innerHTML = `<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div><div>${t.translating || '번역중...'}</div></div>`;
+                try {
+                    const response = await fetch(`${GOOGLE_TRANSLATE_API_URL}?key=${GOOGLE_TRANSLATE_API_KEY}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            q: searchInput,
+                            source: currentLanguage,
+                            target: 'en',
+                            format: 'text'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.data && data.data.translations && data.data.translations[0]) {
+                        searchInput = data.data.translations[0].translatedText;
+                    }
+                } catch (e) {
+                    resultsDiv.innerHTML = `<div class="text-danger">${t.error}</div>`;
+                    return;
+                }
+            }
+
+            resultsDiv.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
+
+            try {
+                const response = await fetch(`https://api.fda.gov/drug/event.json?api_key=${API_KEY}&search=patient.drug.medicinalproduct:"${searchInput}"&limit=10`);
+                const data = await response.json();
+
+                if (!data.results || data.results.length === 0) {
+                    resultsDiv.innerHTML = '<div class="text-muted">검색 결과가 없습니다.</div>';
+                    return;
+                }
+
+                const events = data.results.map(event => {
+                    const reactions = event.patient.reaction || [];
+                    const drugs = event.patient.drug || [];
+                    return {
+                        date: event.receiptdate,
+                        reactions: reactions.map(r => r.reactionmeddrapt).join(', '),
+                        drugs: drugs.map(d => d.medicinalproduct).join(', '),
+                        seriousness: event.seriousness
+                    };
+                });
+
+                resultsDiv.innerHTML = events.map(event => `
+                    <div class="drug-item">
+                        <div class="drug-name">
+                            <i class="fas fa-calendar-alt"></i> ${new Date(event.date).toLocaleDateString()}
+                            ${event.seriousness ? '<span class="badge bg-danger">심각</span>' : ''}
+                        </div>
+                        <div class="drug-detail">
+                            <strong>약물:</strong> ${event.drugs}<br>
+                            <strong>부작용:</strong> ${event.reactions}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error fetching adverse events:', error);
+                resultsDiv.innerHTML = '<div class="text-danger">검색 중 오류가 발생했습니다.</div>';
+            }
+        }
+
+        // 리콜/경고 검색 함수
+        async function searchRecalls() {
+            const t = TRANSLATIONS[currentLanguage];
+            let searchInput = document.getElementById('recallSearch').value.trim();
+            const resultsDiv = document.getElementById('recallResults');
+            if (!searchInput || searchInput.length < 2) {
+                resultsDiv.innerHTML = `<div class="text-muted">${t.minCharMsg}</div>`;
+                return;
+            }
+            if (!/^[a-zA-Z0-9\s]+$/.test(searchInput)) {
+                resultsDiv.innerHTML = `<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div><div>${t.translating || '번역중...'}</div></div>`;
+                try {
+                    const response = await fetch(`${GOOGLE_TRANSLATE_API_URL}?key=${GOOGLE_TRANSLATE_API_KEY}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            q: searchInput,
+                            source: currentLanguage,
+                            target: 'en',
+                            format: 'text'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.data && data.data.translations && data.data.translations[0]) {
+                        searchInput = data.data.translations[0].translatedText;
+                    }
+                } catch (e) {
+                    resultsDiv.innerHTML = `<div class="text-danger">${t.error}</div>`;
+                    return;
+                }
+            }
+
+            resultsDiv.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
+
+            try {
+                const response = await fetch(`https://api.fda.gov/drug/enforcement.json?api_key=${API_KEY}&search=product_description:"${searchInput}"&limit=10`);
+                const data = await response.json();
+
+                if (!data.results || data.results.length === 0) {
+                    resultsDiv.innerHTML = '<div class="text-muted">검색 결과가 없습니다.</div>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = data.results.map(recall => `
+                    <div class="drug-item">
+                        <div class="drug-name">
+                            <i class="fas fa-exclamation-circle"></i> ${recall.recall_initiation_date}
+                            <span class="badge bg-warning">${recall.recall_status}</span>
+                        </div>
+                        <div class="drug-detail">
+                            <strong>제품:</strong> ${recall.product_description}<br>
+                            <strong>사유:</strong> ${recall.reason_for_recall}<br>
+                            <strong>회사:</strong> ${recall.recalling_firm}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error fetching recalls:', error);
+                resultsDiv.innerHTML = '<div class="text-danger">검색 중 오류가 발생했습니다.</div>';
+            }
+        }
+
+        // FDA 승인 검색 함수
+        async function searchApprovals() {
+            const t = TRANSLATIONS[currentLanguage];
+            let searchInput = document.getElementById('approvalSearch').value.trim();
+            const resultsDiv = document.getElementById('approvalResults');
+            if (!searchInput || searchInput.length < 2) {
+                resultsDiv.innerHTML = `<div class="text-muted">${t.minCharMsg}</div>`;
+                return;
+            }
+            if (!/^[a-zA-Z0-9\s]+$/.test(searchInput)) {
+                resultsDiv.innerHTML = `<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div><div>${t.translating || '번역중...'}</div></div>`;
+                try {
+                    const response = await fetch(`${GOOGLE_TRANSLATE_API_URL}?key=${GOOGLE_TRANSLATE_API_KEY}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            q: searchInput,
+                            source: currentLanguage,
+                            target: 'en',
+                            format: 'text'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    if (data.data && data.data.translations && data.data.translations[0]) {
+                        searchInput = data.data.translations[0].translatedText;
+                    }
+                } catch (e) {
+                    resultsDiv.innerHTML = `<div class="text-danger">${t.error}</div>`;
+                    return;
+                }
+            }
+
+            resultsDiv.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
+
+            try {
+                const response = await fetch(`https://api.fda.gov/drug/drugsfda.json?api_key=${API_KEY}&search=brand_name:"${searchInput}"+OR+generic_name:"${searchInput}"&limit=10`);
+                const data = await response.json();
+
+                if (!data.results || data.results.length === 0) {
+                    resultsDiv.innerHTML = '<div class="text-muted">검색 결과가 없습니다.</div>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = data.results.map(approval => `
+                    <div class="drug-item">
+                        <div class="drug-name">
+                            <i class="fas fa-check-circle"></i> ${approval.brand_name}
+                            <span class="badge bg-success">승인</span>
+                        </div>
+                        <div class="drug-detail">
+                            <strong>일반명:</strong> ${approval.generic_name}<br>
+                            <strong>제조사:</strong> ${approval.manufacturer_name}<br>
+                            <strong>승인일:</strong> ${approval.approval_date}<br>
+                            <strong>제형:</strong> ${approval.dosage_form}
+                        </div>
+                    </div>
+                `).join('');
+
+            } catch (error) {
+                console.error('Error fetching approvals:', error);
+                resultsDiv.innerHTML = '<div class="text-danger">검색 중 오류가 발생했습니다.</div>';
+            }
+        }
+
+        // 실시간 검색 이벤트 리스너 추가
+        document.addEventListener('DOMContentLoaded', () => {
+            // 기존 이벤트 리스너들...
+
+            // 부작용 검색 실시간 검색
+            let adverseTimeout = null;
+            document.getElementById('adverseSearch').addEventListener('input', (e) => {
+                clearTimeout(adverseTimeout);
+                adverseTimeout = setTimeout(() => searchAdverseEvents(), 300);
+            });
+
+            // 리콜 검색 실시간 검색
+            let recallTimeout = null;
+            document.getElementById('recallSearch').addEventListener('input', (e) => {
+                clearTimeout(recallTimeout);
+                recallTimeout = setTimeout(() => searchRecalls(), 300);
+            });
+
+            // 승인 검색 실시간 검색
+            let approvalTimeout = null;
+            document.getElementById('approvalSearch').addEventListener('input', (e) => {
+                clearTimeout(approvalTimeout);
+                approvalTimeout = setTimeout(() => searchApprovals(), 300);
+            });
+        });
+    </script>
+</body>
+</html>

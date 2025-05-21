@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>약물 상호작용 검색기</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --border-color: #dee2e6;
+            --input-bg: #ffffff;
+            --input-border: #ced4da;
+            --btn-primary: #0d6efd;
+            --btn-primary-hover: #0b5ed7;
+            --warning-color: #dc3545;
+            --success-color: #28a745;
+            --muted-color: #6c757d;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #212529;
+                --text-color: #f8f9fa;
+                --card-bg: #2c3034;
+                --border-color: #495057;
+                --input-bg: #343a40;
+                --input-border: #495057;
+                --btn-primary: #0d6efd;
+                --btn-primary-hover: #0b5ed7;
+                --warning-color: #dc3545;
+                --success-color: #28a745;
+                --muted-color: #adb5bd;
+            }
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .container {
+            max-width: 800px;
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            transition: background-color 0.3s ease;
+        }
+
+        .form-control {
+            background-color: var(--input-bg);
+            border-color: var(--input-border);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+
+        .form-control:focus {
+            background-color: var(--input-bg);
+            border-color: var(--btn-primary);
+            color: var(--text-color);
+        }
+
+        .form-label {
+            color: var(--text-color);
+        }
+
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: var(--bg-color);
+            display: none;
+            transition: background-color 0.3s ease;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .drug-info {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-left: 4px solid var(--btn-primary);
+            background-color: var(--bg-color);
+            transition: background-color 0.3s ease;
+        }
+
+        .interaction-warning {
+            color: var(--warning-color);
+            font-weight: bold;
+        }
+
+        .interaction-safe {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .language-switch {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .btn-outline-primary {
+            color: var(--btn-primary);
+            border-color: var(--btn-primary);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--btn-primary);
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: var(--btn-primary);
+            border-color: var(--btn-primary);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--btn-primary-hover);
+            border-color: var(--btn-primary-hover);
+        }
+
+        .text-muted {
+            color: var(--muted-color) !important;
+        }
+
+        /* 약물 딕셔너리 스타일 */
+        .drug-dictionary {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .dictionary-content {
+            max-height: 300px;
+            overflow-y: auto;
+            transition: max-height 0.3s ease;
+        }
+
+        .dictionary-content.collapsed {
+            max-height: 0;
+            overflow: hidden;
+        }
+
+        .search-results {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .drug-item {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .drug-item:hover {
+            background-color: var(--bg-color);
+        }
+
+        .recent-searches {
+            font-size: 0.9em;
+        }
+
+        .recent-tag {
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 15px;
+            padding: 2px 8px;
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .recent-tag:hover {
+            background-color: var(--btn-primary);
+            color: white;
+        }
+
+        .drug-detail {
+            font-size: 0.9em;
+            color: var(--muted-color);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="language-switch">
+            <button class="btn btn-outline-primary btn-sm" onclick="toggleLanguage()">한글/English</button>
+        </div>
+        
+        <h1 class="text-center mb-4" data-ko="약물 상호작용 검색기" data-en="Drug Interaction Checker">약물 상호작용 검색기</h1>
+
+        <!-- 약물 딕셔너리 섹션 추가 -->
+        <div class="drug-dictionary mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h3 class="mb-0" data-ko="약물 검색" data-en="Drug Search">약물 검색</h3>
+                <button class="btn btn-sm btn-outline-secondary" onclick="toggleDictionary()" data-ko="접기/펼치기" data-en="Toggle">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </div>
+            <div id="dictionaryContent" class="dictionary-content">
+                <div class="input-group mb-2">
+                    <input type="text" id="drugSearch" class="form-control" 
+                           data-ko-placeholder="약물명 검색 (한글/영문)" 
+                           data-en-placeholder="Search drug name (Korean/English)"
+                           placeholder="약물명 검색 (한글/영문)">
+                    <button class="btn btn-outline-primary" onclick="searchDrug()" data-ko="검색" data-en="Search">검색</button>
+                </div>
+                <div id="searchResults" class="search-results"></div>
+                <div id="recentSearches" class="recent-searches mt-2">
+                    <small class="text-muted" data-ko="최근 검색어" data-en="Recent Searches">최근 검색어:</small>
+                    <div id="recentSearchesList" class="d-flex flex-wrap gap-1 mt-1"></div>
+                </div>
+            </div>
+        </div>
+        
+        <form id="drugForm" onsubmit="return checkInteraction(event)">
+            <div class="mb-3">
+                <label for="drug1" class="form-label" data-ko="첫 번째 약물 이름" data-en="First Drug Name">첫 번째 약물 이름</label>
+                <input type="text" class="form-control" id="drug1" required
+                       data-ko-placeholder="한글 또는 영문으로 입력" data-en-placeholder="Enter in Korean or English">
+            </div>
+            <div class="mb-3">
+                <label for="drug2" class="form-label" data-ko="두 번째 약물 이름" data-en="Second Drug Name">두 번째 약물 이름</label>
+                <input type="text" class="form-control" id="drug2" required
+                       data-ko-placeholder="한글 또는 영문으로 입력" data-en-placeholder="Enter in Korean or English">
+            </div>
+            <button type="submit" class="btn btn-primary w-100" data-ko="검색하기" data-en="Search">검색하기</button>
+        </form>
+
+        <div class="loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2" data-ko="검색 중..." data-en="Searching...">검색 중...</p>
+        </div>
+
+        <div id="resultBox" class="result-box">
+            <h3 class="mb-3" data-ko="검색 결과" data-en="Search Results">검색 결과</h3>
+            <div id="drug1Info" class="drug-info"></div>
+            <div id="drug2Info" class="drug-info"></div>
+            <div id="interactionResult" class="mt-3"></div>
+            <div class="mt-3 text-muted small" data-ko="※ 참고용 정보이며, 실제 복용 전 의사 또는 약사와 상담하세요." 
+                 data-en="※ This information is for reference only. Please consult your doctor or pharmacist before taking any medication.">
+                ※ 참고용 정보이며, 실제 복용 전 의사 또는 약사와 상담하세요.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentLang = 'ko';
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ko' ? 'en' : 'ko';
+            document.querySelectorAll('[data-ko]').forEach(element => {
+                if (element.tagName === 'INPUT') {
+                    element.placeholder = element.getAttribute(`data-${currentLang}-placeholder`);
+                } else {
+                    element.textContent = element.getAttribute(`data-${currentLang}`);
+                }
+            });
+        }
+
+        async function checkInteraction(event) {
+            event.preventDefault();
+            
+            const drug1 = document.getElementById('drug1').value;
+            const drug2 = document.getElementById('drug2').value;
+            
+            if (drug1 === drug2) {
+                alert(currentLang === 'ko' ? '서로 다른 약물을 입력해주세요.' : 'Please enter different drugs.');
+                return false;
+            }
+
+            document.querySelector('.loading').style.display = 'block';
+            document.getElementById('resultBox').style.display = 'none';
+
+            try {
+                const response = await fetch('/check_interaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ drug1, drug2 })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return false;
+                }
+
+                displayResults(data);
+            } catch (error) {
+                alert(currentLang === 'ko' ? '검색 중 오류가 발생했습니다.' : 'An error occurred during the search.');
+            } finally {
+                document.querySelector('.loading').style.display = 'none';
+            }
+
+            return false;
+        }
+
+        function displayResults(data) {
+            const resultBox = document.getElementById('resultBox');
+            const drug1Info = document.getElementById('drug1Info');
+            const drug2Info = document.getElementById('drug2Info');
+            const interactionResult = document.getElementById('interactionResult');
+
+            drug1Info.innerHTML = formatDrugInfo(data.info1, 1);
+            drug2Info.innerHTML = formatDrugInfo(data.info2, 2);
+            
+            if (data.has_interaction) {
+                interactionResult.innerHTML = `
+                    <div class="interaction-warning">
+                        ${currentLang === 'ko' ? 
+                            `⚠️ '${data.drug1}' 와 '${data.drug2}' 간 주의가 필요합니다.` :
+                            `⚠️ Caution is needed between '${data.drug1}' and '${data.drug2}'.`}
+                    </div>
+                    <div class="mt-2">
+                        ${formatInteractionInfo(data.trans1, data.drug1)}
+                        <hr>
+                        ${formatInteractionInfo(data.trans2, data.drug2)}
+                    </div>`;
+            } else {
+                interactionResult.innerHTML = `
+                    <div class="interaction-safe">
+                        ${currentLang === 'ko' ?
+                            `✅ '${data.drug1}' 와 '${data.drug2}' 간 알려진 상호작용이 없습니다.` :
+                            `✅ No known interactions between '${data.drug1}' and '${data.drug2}'.`}
+                    </div>`;
+            }
+
+            resultBox.style.display = 'block';
+        }
+
+        function formatDrugInfo(info, index) {
+            return `
+                <h4>${currentLang === 'ko' ? `${index}번 약물 정보` : `Drug ${index} Information`}: ${info.drug}</h4>
+                <p><strong>${currentLang === 'ko' ? '상품명' : 'Brand Name'}:</strong> ${info.brand_name}</p>
+                <p><strong>${currentLang === 'ko' ? '용도' : 'Indications'}:</strong> ${info.indications}</p>
+                <p><strong>${currentLang === 'ko' ? '분류' : 'Classification'}:</strong> ${info.classification}</p>
+                <p><strong>${currentLang === 'ko' ? '복용법' : 'Dosage'}:</strong> ${info.dosage}</p>
+                <p><strong>${currentLang === 'ko' ? '부작용' : 'Adverse Reactions'}:</strong> ${info.adverse_reactions}</p>`;
+        }
+
+        function formatInteractionInfo(trans, drug) {
+            const sections = [];
+            if (trans.interactions !== '상호작용 정보 없음') {
+                sections.push(`<p><strong>${drug} ${currentLang === 'ko' ? '상호작용' : 'Interactions'}:</strong> ${trans.interactions}</p>`);
+            }
+            if (trans.warnings !== '주의사항 없음') {
+                sections.push(`<p><strong>${drug} ${currentLang === 'ko' ? '주의사항' : 'Warnings'}:</strong> ${trans.warnings}</p>`);
+            }
+            if (trans.precautions !== '예방조치 없음') {
+                sections.push(`<p><strong>${drug} ${currentLang === 'ko' ? '예방조치' : 'Precautions'}:</strong> ${trans.precautions}</p>`);
+            }
+            return sections.join('');
+        }
+
+        // 약물 딕셔너리 관련 함수들
+        let recentSearches = JSON.parse(localStorage.getItem('recentSearches') || '[]');
+        const maxRecentSearches = 5;
+
+        function toggleDictionary() {
+            const content = document.getElementById('dictionaryContent');
+            const button = document.querySelector('.drug-dictionary button');
+            content.classList.toggle('collapsed');
+            button.querySelector('i').classList.toggle('fa-chevron-down');
+            button.querySelector('i').classList.toggle('fa-chevron-up');
+        }
+
+        function addToRecentSearches(drug) {
+            recentSearches = [drug, ...recentSearches.filter(d => d !== drug)].slice(0, maxRecentSearches);
+            localStorage.setItem('recentSearches', JSON.stringify(recentSearches));
+            updateRecentSearches();
+        }
+
+        function updateRecentSearches() {
+            const container = document.getElementById('recentSearchesList');
+            container.innerHTML = recentSearches.map(drug => `
+                <span class="recent-tag" onclick="useRecentSearch('${drug}')">${drug}</span>
+            `).join('');
+        }
+
+        function useRecentSearch(drug) {
+            document.getElementById('drugSearch').value = drug;
+            searchDrug();
+        }
+
+        async function searchDrug() {
+            const searchInput = document.getElementById('drugSearch').value.trim();
+            if (!searchInput) return;
+
+            const resultsDiv = document.getElementById('searchResults');
+            resultsDiv.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm" role="status"></div></div>';
+
+            try {
+                const response = await fetch('/search_drug', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: searchInput })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="text-danger">${data.error}</div>`;
+                    return;
+                }
+
+                if (data.results.length === 0) {
+                    resultsDiv.innerHTML = `<div class="text-muted">${currentLang === 'ko' ? '검색 결과가 없습니다.' : 'No results found.'}</div>`;
+                    return;
+                }
+
+                resultsDiv.innerHTML = data.results.map(drug => `
+                    <div class="drug-item" onclick="selectDrug('${drug}')">
+                        <div class="drug-name">${drug}</div>
+                        <div class="drug-detail">${currentLang === 'ko' ? '클릭하여 선택' : 'Click to select'}</div>
+                    </div>
+                `).join('');
+
+                addToRecentSearches(searchInput);
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="text-danger">${currentLang === 'ko' ? '검색 중 오류가 발생했습니다.' : 'An error occurred during search.'}</div>`;
+            }
+        }
+
+        function selectDrug(drug) {
+            // 첫 번째 빈 입력 필드에 선택한 약물 이름 입력
+            const drug1 = document.getElementById('drug1');
+            const drug2 = document.getElementById('drug2');
+            
+            if (!drug1.value) {
+                drug1.value = drug;
+            } else if (!drug2.value) {
+                drug2.value = drug;
+            } else {
+                // 두 필드가 모두 채워져 있으면 첫 번째 필드 업데이트
+                drug1.value = drug;
+            }
+        }
+
+        // 페이지 로드 시 최근 검색어 표시
+        document.addEventListener('DOMContentLoaded', () => {
+            updateRecentSearches();
+        });
+
+        // Enter 키로 검색
+        document.getElementById('drugSearch').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchDrug();
+            }
+        });
+    </script>
+</body>
+</html> 
