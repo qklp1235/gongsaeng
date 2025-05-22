@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>약물 상호작용 확인</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --primary-hover: #2980b9;
+            --success-color: #2ecc71;
+            --warning-color: #e74c3c;
+            --text-color: #2c3e50;
+            --text-light: #7f8c8d;
+            --bg-color: #ffffff;
+            --bg-light: #f5f5f5;
+            --border-color: #ddd;
+            --shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --primary-color: #4fa3ff;
+                --primary-hover: #2980b9;
+                --success-color: #2ecc71;
+                --warning-color: #e74c3c;
+                --text-color: #e0e0e0;
+                --text-light: #b0b0b0;
+                --bg-color: #2c3136;
+                --bg-light: #363b40;
+                --border-color: #404040;
+                --shadow: 0 2px 5px rgba(0,0,0,0.2);
+            }
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-light);
+            color: var(--text-color);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px 0;
+        }
+
+        .search-container {
+            background-color: var(--bg-color);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+
+        .drug-input-group {
+            margin-bottom: 15px;
+        }
+
+        .drug-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 16px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            box-sizing: border-box;
+        }
+
+        .drug-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .drug-suggestions {
+            display: none;
+            position: absolute;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+        }
+
+        .drug-suggestions.show {
+            display: block;
+        }
+
+        .suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .suggestion-item:hover {
+            background-color: var(--bg-light);
+        }
+
+        .check-button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .check-button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .result-container {
+            display: none;
+            background-color: var(--bg-color);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+            margin-top: 20px;
+        }
+
+        .result-container.show {
+            display: block;
+        }
+
+        .result-header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-header.warning {
+            color: var(--warning-color);
+        }
+
+        .result-header.safe {
+            color: var(--success-color);
+        }
+
+        .drug-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-left: 4px solid var(--primary-color);
+            background-color: var(--bg-light);
+        }
+
+        .drug-info h3 {
+            margin: 0 0 10px 0;
+            color: var(--text-color);
+        }
+
+        .drug-info p {
+            margin: 5px 0;
+            color: var(--text-light);
+        }
+
+        .interaction-details {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: var(--bg-light);
+            border-radius: 5px;
+        }
+
+        .interaction-details h4 {
+            margin: 0 0 10px 0;
+            color: var(--text-color);
+        }
+
+        .interaction-details p {
+            margin: 5px 0;
+            color: var(--text-light);
+        }
+
+        .disclaimer {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: var(--bg-light);
+            border-radius: 5px;
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+
+            .search-container,
+            .result-container {
+                padding: 15px;
+            }
+
+            .drug-input {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💊 약물 상호작용 확인</h1>
+        </div>
+
+        <div class="search-container">
+            <div class="drug-input-group">
+                <input type="text" id="drug1" class="drug-input" placeholder="첫 번째 약물 이름을 입력하세요" autocomplete="off">
+                <div id="suggestions1" class="drug-suggestions"></div>
+            </div>
+            <div class="drug-input-group">
+                <input type="text" id="drug2" class="drug-input" placeholder="두 번째 약물 이름을 입력하세요" autocomplete="off">
+                <div id="suggestions2" class="drug-suggestions"></div>
+            </div>
+            <button id="checkButton" class="check-button">상호작용 확인</button>
+        </div>
+
+        <div id="resultContainer" class="result-container">
+            <div id="resultHeader" class="result-header">
+                <h2 id="resultTitle"></h2>
+            </div>
+            <div id="drug1Info" class="drug-info"></div>
+            <div id="drug2Info" class="drug-info"></div>
+            <div id="interactionDetails" class="interaction-details"></div>
+            <div class="disclaimer">
+                ※ 이 정보는 참고용이며, 실제 복용 전 반드시 의사 또는 약사와 상담하세요.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 전역 변수로 데이터 저장
+        let drugsData = null;
+        let interactionsData = null;
+
+        // 데이터 로드
+        async function loadData() {
+            try {
+                const [drugsResponse, interactionsResponse] = await Promise.all([
+                    fetch('data/drugs.json'),
+                    fetch('data/interactions.json')
+                ]);
+                
+                drugsData = await drugsResponse.json();
+                interactionsData = await interactionsResponse.json();
+                
+                console.log('Data loaded successfully');
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('데이터를 불러오는 중 오류가 발생했습니다.');
+            }
+        }
+
+        // 약물 검색
+        function searchDrugs(query, suggestionsElement) {
+            if (!query || !drugsData) return;
+            
+            query = query.toLowerCase();
+            const matches = Object.entries(drugsData)
+                .filter(([name, data]) => 
+                    name.toLowerCase().includes(query) || 
+                    data.drug.toLowerCase().includes(query) ||
+                    data.brand_name.toLowerCase().includes(query)
+                )
+                .slice(0, 5);
+
+            suggestionsElement.innerHTML = '';
+            matches.forEach(([name, data]) => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.textContent = `${data.drug} (${data.brand_name})`;
+                div.onclick = () => {
+                    document.activeElement.value = data.drug;
+                    suggestionsElement.classList.remove('show');
+                };
+                suggestionsElement.appendChild(div);
+            });
+            
+            suggestionsElement.classList.toggle('show', matches.length > 0);
+        }
+
+        // 상호작용 확인
+        function checkInteraction() {
+            const drug1 = document.getElementById('drug1').value.trim();
+            const drug2 = document.getElementById('drug2').value.trim();
+            
+            if (!drug1 || !drug2) {
+                alert('두 약물의 이름을 모두 입력해주세요.');
+                return;
+            }
+
+            if (!drugsData || !interactionsData) {
+                alert('데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+                return;
+            }
+
+            const drug1Data = Object.entries(drugsData).find(([_, data]) => 
+                data.drug.toLowerCase() === drug1.toLowerCase() ||
+                data.brand_name.toLowerCase() === drug1.toLowerCase()
+            )?.[1];
+
+            const drug2Data = Object.entries(drugsData).find(([_, data]) => 
+                data.drug.toLowerCase() === drug2.toLowerCase() ||
+                data.brand_name.toLowerCase() === drug2.toLowerCase()
+            )?.[1];
+
+            if (!drug1Data || !drug2Data) {
+                alert('입력한 약물을 찾을 수 없습니다.');
+                return;
+            }
+
+            const key = `${drug1.toLowerCase()}_${drug2.toLowerCase()}`;
+            const reverseKey = `${drug2.toLowerCase()}_${drug1.toLowerCase()}`;
+            const interaction = interactionsData[key] || interactionsData[reverseKey];
+
+            displayResult(drug1Data, drug2Data, interaction);
+        }
+
+        // 결과 표시
+        function displayResult(drug1Data, drug2Data, interaction) {
+            const resultContainer = document.getElementById('resultContainer');
+            const resultHeader = document.getElementById('resultHeader');
+            const resultTitle = document.getElementById('resultTitle');
+            const drug1Info = document.getElementById('drug1Info');
+            const drug2Info = document.getElementById('drug2Info');
+            const interactionDetails = document.getElementById('interactionDetails');
+
+            // 결과 헤더 설정
+            if (interaction?.has_interaction) {
+                resultHeader.className = 'result-header warning';
+                resultTitle.textContent = '⚠️ 주의가 필요한 약물 조합입니다';
+            } else {
+                resultHeader.className = 'result-header safe';
+                resultTitle.textContent = '✅ 알려진 상호작용이 없습니다';
+            }
+
+            // 약물 정보 표시
+            drug1Info.innerHTML = `
+                <h3>${drug1Data.drug}</h3>
+                <p><strong>상품명:</strong> ${drug1Data.brand_name}</p>
+                <p><strong>용도:</strong> ${drug1Data.indications}</p>
+                <p><strong>분류:</strong> ${drug1Data.classification}</p>
+                <p><strong>복용법:</strong> ${drug1Data.dosage}</p>
+                <p><strong>부작용:</strong> ${drug1Data.adverse_reactions}</p>
+            `;
+
+            drug2Info.innerHTML = `
+                <h3>${drug2Data.drug}</h3>
+                <p><strong>상품명:</strong> ${drug2Data.brand_name}</p>
+                <p><strong>용도:</strong> ${drug2Data.indications}</p>
+                <p><strong>분류:</strong> ${drug2Data.classification}</p>
+                <p><strong>복용법:</strong> ${drug2Data.dosage}</p>
+                <p><strong>부작용:</strong> ${drug2Data.adverse_reactions}</p>
+            `;
+
+            // 상호작용 정보 표시
+            if (interaction?.has_interaction) {
+                interactionDetails.innerHTML = `
+                    <h4>상호작용 상세 정보</h4>
+                    <p><strong>${drug1Data.drug} 상호작용:</strong> ${interaction.drug1.interactions}</p>
+                    <p><strong>${drug1Data.drug} 주의사항:</strong> ${interaction.drug1.warnings}</p>
+                    <p><strong>${drug1Data.drug} 예방조치:</strong> ${interaction.drug1.precautions}</p>
+                    <p><strong>${drug2Data.drug} 상호작용:</strong> ${interaction.drug2.interactions}</p>
+                    <p><strong>${drug2Data.drug} 주의사항:</strong> ${interaction.drug2.warnings}</p>
+                    <p><strong>${drug2Data.drug} 예방조치:</strong> ${interaction.drug2.precautions}</p>
+                `;
+            } else {
+                interactionDetails.innerHTML = `
+                    <h4>상호작용 정보</h4>
+                    <p>현재 알려진 상호작용이 없습니다. 하지만 이는 모든 가능한 상호작용을 포함하지 않을 수 있으며, 
+                    실제 복용 전 반드시 의사 또는 약사와 상담하시기 바랍니다.</p>
+                `;
+            }
+
+            resultContainer.classList.add('show');
+        }
+
+        // 이벤트 리스너 설정
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+
+            const drug1Input = document.getElementById('drug1');
+            const drug2Input = document.getElementById('drug2');
+            const suggestions1 = document.getElementById('suggestions1');
+            const suggestions2 = document.getElementById('suggestions2');
+            const checkButton = document.getElementById('checkButton');
+
+            // 약물 검색 이벤트
+            drug1Input.addEventListener('input', () => searchDrugs(drug1Input.value, suggestions1));
+            drug2Input.addEventListener('input', () => searchDrugs(drug2Input.value, suggestions2));
+
+            // 검색창 외부 클릭 시 제안 목록 닫기
+            document.addEventListener('click', (e) => {
+                if (!drug1Input.contains(e.target) && !suggestions1.contains(e.target)) {
+                    suggestions1.classList.remove('show');
+                }
+                if (!drug2Input.contains(e.target) && !suggestions2.contains(e.target)) {
+                    suggestions2.classList.remove('show');
+                }
+            });
+
+            // 상호작용 확인 버튼 클릭
+            checkButton.addEventListener('click', checkInteraction);
+
+            // Enter 키로 상호작용 확인
+            [drug1Input, drug2Input].forEach(input => {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        checkInteraction();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html> 
